@@ -1,0 +1,133 @@
+---
+# Source: td-exo-frontend/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tdsdevusauth-configmap
+data:
+  CMS_ENDPOINT: "http://localhost:1337/graphql"
+  DEFAULT_LOCALE: "en"
+  DEVMODE_GQL_LOGGING: "false"
+  DEVMODE_TOOLBAR: "hidden"
+  DYNAMIC_ENV_KEYS: "GRAPHQL_ENDPOINT,GRAPHQL_BATCH"
+  FEATURE_AVAILABILITY_ON_PDP: "online+store"
+  FEATURE_AVAILABILITY_ON_PROD_CARDS: "none"
+  FEATURE_CART_ZIP_IN: "false"
+  FEATURE_PHONE_PREFIX: "false"
+  FEATURE_PROFILE_COUNTRY_PROVINCE_SELECT: "false"
+  FEATURE_REQUIRE_OLD_PASSWORD: "false"
+  FEATURE_REVIEWS_ON_PROD_CARDS: "false"
+  FEATURE_SPEECHLY: "false"
+  FEATURE_TUTORIAL: "false"
+  GET_ADDRESS_API_KEY: "******"
+  GRAPHQL_BATCH: "false"
+  GRAPHQL_ENDPOINT: "http://auth-exo-devus.tdse.now.hclsoftware.cloud/graphql"
+  IMAGE_EXTENSION: ".jpg"
+  OIDC_AUTH_CARRIER: "token"
+  OIDC_FLOW: "password"
+  OIDC_PUBLIC_URL: "https://localhost:3200"
+  PORT: "3200"
+  PRODUCT_PLACEHOLDER: "https://www.google.com/url?sa=i&url=https%3A%2F%2Flab.csschopper.com%2Fplaceholder%2F&psig=AOvVaw2Igk1yg2yM7ZHTVI2TWCCI&ust=1684564956929000&source=images&cd=vfe&ved=0CBEQjRxqFwoTCPjCkNHjgP8CFQAAAAAdAAAAABAE"
+  PROVIDERS_THEME: "client-packages/themes/tduspm-theme/src/index.ts"
+  SKIP_SSR_QUERIES: "true"
+  SSR_PORT: "3210"
+  USE_CATEGORIES_FOR_NAVIGATION: "false"
+---
+# Source: td-exo-frontend/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tdsdevusauth-td-exo-frontend
+  labels:
+    helm.sh/chart: td-exo-frontend-0.1.0
+    app.kubernetes.io/name: td-exo-frontend
+    app.kubernetes.io/instance: tdsdevusauth
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3210
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: td-exo-frontend
+    app.kubernetes.io/instance: tdsdevusauth
+---
+# Source: td-exo-frontend/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tdsdevusauth-td-exo-frontend
+  labels:
+    helm.sh/chart: td-exo-frontend-0.1.0
+    app.kubernetes.io/name: td-exo-frontend
+    app.kubernetes.io/instance: tdsdevusauth
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: td-exo-frontend
+      app.kubernetes.io/instance: tdsdevusauth
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: td-exo-frontend
+        app.kubernetes.io/instance: tdsdevusauth
+    spec:
+      imagePullSecrets:
+        - name: all-icr-io
+      hostAliases:
+        - ip: "169.61.100.156"
+          hostnames:
+            - "auth-exo-devus.tdse.now.hclsoftware.cloud"
+      securityContext:
+        {}
+      containers:
+        - name: td-exo-frontend
+          securityContext:
+            {}
+          image: "us.icr.io/tds-repo/exo-frontend:latest"
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: 
+                name: tdsdevusauth-configmap            
+          ports:
+            - name: http
+              containerPort: 3210
+              protocol: TCP
+              hostPort: 3210
+          resources:
+            {}
+---
+# Source: td-exo-frontend/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tdsdevusauth-td-exo-frontend
+  labels:
+    helm.sh/chart: td-exo-frontend-0.1.0
+    app.kubernetes.io/name: td-exo-frontend
+    app.kubernetes.io/instance: tdsdevusauth
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    kubernetes.io/ingress.class: public-iks-k8s-nginx
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 512k
+    nginx.ingress.kubernetes.io/proxy-buffering: "on"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+spec:
+  rules:
+    - host: "auth-exo-frontend-devus.tdse.now.hclsoftware.cloud"
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: tdsdevusauth-td-exo-frontend
+                port:
+                  number: 3210
